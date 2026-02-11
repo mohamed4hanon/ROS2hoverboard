@@ -1,42 +1,44 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.8)
 project(hoverboard_driver)
 
-add_compile_options(-std=c++11)
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
 
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  std_msgs
-  hardware_interface
-  controller_manager
-  dynamic_reconfigure
-  control_toolbox
-  rosparam_shortcuts
-)
+# 1. Find ROS 2 packages instead of catkin
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(hardware_interface REQUIRED)
+find_package(controller_manager REQUIRED)
+find_package(control_toolbox REQUIRED)
+# Note: dynamic_reconfigure is replaced by ROS 2 parameters
 
-## System dependencies are found with CMake's conventions
-find_package(Boost REQUIRED COMPONENTS system)
-
-generate_dynamic_reconfigure_options(
-  config/Hoverboard.cfg
-)
-
-catkin_package(
-  INCLUDE_DIRS include
-)
-
-include_directories(
- include
- include/hoverboard_driver
-  ${catkin_INCLUDE_DIRS}
- ${Boost_INCLUDE_DIRS}
-)
-
-add_executable(${PROJECT_NAME} 
+# 2. Define the executable
+add_executable(${PROJECT_NAME}_node 
   src/hoverboard.cpp 
   src/pid.cpp
   src/main.cpp
 )
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
-add_dependencies(hoverboard_driver ${PROJECT_NAME}_gencfg)
+# 3. Add Include directories
+target_include_directories(${PROJECT_NAME}_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
 
+# 4. Link dependencies (Ament handles Boost & System libs automatically here)
+ament_target_dependencies(${PROJECT_NAME}_node
+  rclcpp
+  std_msgs
+  hardware_interface
+  controller_manager
+  control_toolbox
+)
+
+# 5. Install the executable
+install(TARGETS ${PROJECT_NAME}_node
+  DESTINATION lib/${PROJECT_NAME})
+
+# 6. REQUIRED: Must be at the very end
+ament_package()
